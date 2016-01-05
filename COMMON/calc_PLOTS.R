@@ -14,10 +14,22 @@ library(ggplot2)
 lineColors <- c(scales::alpha("dodgerblue", 0.8), scales::alpha("darkorange1", 0.7), "olivedrab", "chocolate", "darkmagenta")
 lineTyp <- 1
 lineWd <- c(1,3,1)
+
+# Sequential palettes
 seqColPurp5 <- c('#edf8fb', '#b3cde3', '#8c96c6', '#8856a7', '#810f7c')
 seqColGrn5 <- c("#f7f7f7", "#ffffcc", "#c2e699", "#78c679", "#238443")
-divColBluYelRed6 <- c('#2c7bb6', '#abd9e9', '#ffffbf', '#fdae61', '#d7191c', '#800000')
+
+# Divergent palettes
 divColBluWhtRed6 <- c("#0571b0", "#92c5de", "#f7f7f7", "#f4a582", "#ca0020", "#800000")
+
+divColBluYelRed6 <- c('#2c7bb6', '#abd9e9', '#ffffbf', '#fdae61', '#d7191c', '#800000')
+divColBluYelRed7 <- c('#26466D', '#2c7bb6', '#abd9e9', '#ffffbf', '#fdae61', '#d7191c', '#800000')
+
+divColRedYelBlu6 <- c('#d7191c', '#fdae61', '#ffffbf', '#abd9e9', '#2c7bb6', '#162252')
+divColRedYelBlu7 <- c('#800000', '#d7191c', '#fdae61', '#ffffbf', '#abd9e9', '#2c7bb6', '#162252')
+
+divColBrnWhtGrn5 <- c('#a6611a', '#dfc27d', '#f5f5f5', '#80cdc1', '#018571')
+divColBrnWhtGrn6 <- c('#5E2605', '#a6611a', '#dfc27d', '#f5f5f5', '#80cdc1', '#018571')
 
 # Get needed geo info
 ncid <- ncdf4::nc_open(geoFile)
@@ -175,7 +187,8 @@ for (n in gageNames) {
                         lnCols=hydroColors,
                         lnWds=hydroWidths,
                         labTitle=plotTitle,
-                        stdate=hydroStartDate, enddate=hydroEndDate, obsCol="q_cms", idCol=idCol)
+                        stdate=hydroStartDate, enddate=hydroEndDate, 
+			obsCol="q_cms", idCol=idCol, ymaxPerc=0.99)
         dev.off()
 }
 if (writeHtml) {
@@ -192,7 +205,8 @@ if (writeHtml) {
                         lnCols=hydroColors,
                         lnWds=hydroWidths,
                         labTitle=plotTitle,
-                        stdate=hydroStartDate, enddate=hydroEndDate, obsCol="q_cms", idCol=idCol)\n')
+                        stdate=hydroStartDate, enddate=hydroEndDate, 
+			obsCol="q_cms", idCol=idCol, ymaxPerc=0.99)\n')
                 cat(plottxt, file=paste0(writePlotDir,"/plots_hydro.Rmd"), append=TRUE)
                 cat('```\n', file=paste0(writePlotDir,"/plots_hydro.Rmd"), append=TRUE)
         }
@@ -567,7 +581,8 @@ if (strBiasMap) {
 	for (i in strBiasTags) {
         	for (j in strBiasSeas) {
                 	tbltmp <- subset(stats_str, stats_str$tag==i & stats_str$seas==j & stats_str$site_no %in% unique(gageList$site_no))
-			tbltmp <- plyr::join(tbltmp, subset(stats_qmean, stats_qmean$tag==i & stats_qmean$seas==j), by="site_no")
+			tbltmp <- plyr::join(tbltmp, subset(stats_qmean, stats_qmean$tag==i & stats_qmean$seas==j & stats_qmean$typ=="Obs"), by="site_no")
+			message(paste0("nrow tbltmp= ", nrow(tbltmp)))
                 	gg <- PlotMapErrors(geoMap, tbltmp,
                         	plotTitle="Modeled Streamflow Bias at USGS Gages",
 				plotSubTitle=paste0(i, ", ", statsDateList_STR[[j]]),
@@ -577,8 +592,8 @@ if (strBiasMap) {
 				minThreshCol=(-100), maxThreshCol=100,
 				minPtsize=1.5, maxPtsize=10,
 				exclVar="dy_n", exclThresh=nThresh*max(tbltmp$dy_n),
-				colBreaks=divColBluYelRed6, 
-                        	valBreaks=c(-Inf, -25, -10, 10, 25, 100, Inf))
+				colBreaks=divColRedYelBlu7, 
+                        	valBreaks=c(-Inf, -100, -60, -20, 20, 60, 100, Inf))
                 	ggplot2::ggsave(filename=paste0(writePlotDir, "/str_bias_map_", i, "_", j, ".png"),
                         	plot=gg[[1]], units="in", width=8, height=6, dpi=300)
 			if (writeHtml) {
@@ -639,7 +654,7 @@ if (strCorrMap) {
 	for (i in strCorrTags) {
         	for (j in strCorrSeas) {
 			tbltmp <- subset(stats_str, stats_str$tag==i & stats_str$seas==j & stats_str$site_no %in% unique(gageList$site_no))
-			tbltmp <- plyr::join(tbltmp, subset(stats_qmean, stats_qmean$tag==i & stats_qmean$seas==j), by="site_no")
+			tbltmp <- plyr::join(tbltmp, subset(stats_qmean, stats_qmean$tag==i & stats_qmean$seas==j & stats_qmean$typ=="Obs"), by="site_no")
                 	gg <- PlotMapErrors(geoMap, tbltmp,
                         	plotTitle="Modeled Streamflow Correlation at USGS Gages",
 				plotSubTitle=paste0(i, ", ", statsDateList_STR[[j]]),

@@ -194,16 +194,33 @@ if (strProc) {
 						end=ifelse(is.null(enddate_stats), max(modFrxstout_tmp$POSIXct), enddate_stats)),
 					Sub=list(start=ifelse(is.null(stdate_stats_sub), min(modFrxstout_tmp$POSIXct), stdate_stats_sub),
 						end=ifelse(is.null(enddate_stats_sub), max(modFrxstout_tmp$POSIXct), enddate_stats_sub)))
-		modFrxstout_tmp <- subset(modFrxstout_tmp, modFrxstout_tmp$POSIXct >= stats_dates_tag$Full$start & modFrxstout_tmp$POSIXct <= stats_dates_tag$Full$end)
-		modFrxstout_tmp_sub <- subset(modFrxstout_tmp, modFrxstout_tmp$POSIXct >= stats_dates_tag$Sub$start & modFrxstout_tmp$POSIXct <= stats_dates_tag$Sub$end)
+		modFrxstout_tmp <- data.table(subset(modFrxstout_tmp, modFrxstout_tmp$POSIXct >= stats_dates_tag$Full$start & modFrxstout_tmp$POSIXct <= stats_dates_tag$Full$end))
+		modFrxstout_tmp_sub <- data.table(subset(modFrxstout_tmp, modFrxstout_tmp$POSIXct >= stats_dates_tag$Sub$start & modFrxstout_tmp$POSIXct <= stats_dates_tag$Sub$end))
+		obsStrData_tmp <- data.table(subset(obsStrData, obsStrData$POSIXct >= stats_dates_tag$Full$start & obsStrData$POSIXct <= stats_dates_tag$Full$end))
+		obsStrData_tmp_sub <- data.table(subset(obsStrData, obsStrData$POSIXct >= stats_dates_tag$Sub$start & obsStrData$POSIXct <= stats_dates_tag$Sub$end))
 		# Qmeans
+		# Full
 		stats_qmean_tag <- as.data.frame(modFrxstout_tmp[, j=list(qmean=mean(q_cms, na.rm=TRUE)), by=list(site_no)])
+		stats_qmean_tag$typ <- "Model"
 		stats_qmean_tag$tag <- runTag
 		stats_qmean_tag$seas <- "Full"
+                stats_obsqmean_tag <- as.data.frame(obsStrData_tmp[, j=list(qmean=mean(q_cms, na.rm=TRUE)), by=list(site_no)])
+                stats_obsqmean_tag$typ <- "Obs"
+                stats_obsqmean_tag$tag <- runTag
+                stats_obsqmean_tag$seas <- "Full"
+		stats_qmean_tag <- plyr::rbind.fill(stats_qmean_tag, stats_obsqmean_tag)
+		# Sub
                 stats_qmean_tag_sub <- as.data.frame(modFrxstout_tmp_sub[, j=list(qmean=mean(q_cms, na.rm=TRUE)), by=list(site_no)])
+		stats_qmean_tag_sub$typ <- "Model"
                 stats_qmean_tag_sub$tag <- runTag
 		stats_qmean_tag_sub$seas <- "Sub"
-		stats_qmean <- as.data.frame(rbindlist(list(stats_qmean, stats_qmean_tag, stats_qmean_tag_sub)))
+                stats_obsqmean_tag_sub <- as.data.frame(obsStrData_tmp_sub[, j=list(qmean=mean(q_cms, na.rm=TRUE)), by=list(site_no)])
+                stats_obsqmean_tag_sub$typ <- "Obs"
+                stats_obsqmean_tag_sub$tag <- runTag
+                stats_obsqmean_tag_sub$seas <- "Sub"
+                stats_qmean_tag_sub <- plyr::rbind.fill(stats_qmean_tag_sub, stats_obsqmean_tag_sub)
+		# Combine
+		stats_qmean <- as.data.frame(rbindlist(list(stats_qmean, stats_qmean_tag, stats_qmean_tag_sub), fill=TRUE))
 		# Dates
                 stats_dates_tag <- list(stats_dates_tag)
                 names(stats_dates_tag) <- runTag

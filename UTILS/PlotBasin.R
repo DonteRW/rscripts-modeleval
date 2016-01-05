@@ -141,7 +141,7 @@ PlotFlow <- function(n, modDfs, obs,
                         stdate=NULL,
                         enddate=NULL,
                         modCol="q_cms", obsCol="mean_qcms",
-			idCol="site_no") {
+			idCol="site_no", ymaxPerc=1.0) {
   # Parse type of input for model data (dataframe or list of multiple dataframes)
   if (is.data.frame(modDfs)) {
         str1 <- modDfs
@@ -159,11 +159,11 @@ PlotFlow <- function(n, modDfs, obs,
         str1 <- str1[get(idCol)==n & POSIXct>=stdate & POSIXct<=enddate,]
         obs <- obs[get(idCol)==as.integer(n) & POSIXct>=stdate & POSIXct<=enddate,]
         # Calculate maximum y val for plot limits
-        ymax <- max(str1[,modCol], obs[,obsCol], na.rm=TRUE)
+        ymax <- max(quantile(str1[,modCol], ymaxPerc, na.rm=TRUE), quantile(obs[,obsCol], ymaxPerc, na.rm=TRUE), na.rm=TRUE)
         if (!is.data.frame(modDfs) & is.list(modDfs) & length(modDfs)>1) {
                 for (stri in modDfs) {
                         stri <- stri[get(idCol)==n & POSIXct>=stdate & POSIXct<=enddate,]
-                        ymax <- max(ymax, stri[,modCol], na.rm=TRUE)
+                        ymax <- max(ymax, quantile(stri[,modCol], ymaxPerc, na.rm=TRUE), na.rm=TRUE)
                         }
                 }
         # Set colors, widths, types
@@ -202,12 +202,12 @@ PlotFlow <- function(n, modDfs, obs,
   		obs <- subset(obs, obs[,idCol]==n & obs$POSIXct>=stdate & obs$POSIXct<=enddate)
   	}
   	# Calculate maximum y val for plot limits
-  	ymax <- max(str1[,modCol], obs[,obsCol], na.rm=TRUE)
+  	ymax <- max(quantile(str1[,modCol], ymaxPerc, na.rm=TRUE), quantile(obs[,obsCol], ymaxPerc, na.rm=TRUE), na.rm=TRUE)
   	if (!is.data.frame(modDfs) & is.list(modDfs) & length(modDfs)>1) {
         	for (stri in modDfs) {
 			if (is.data.table(stri)) stri<-data.frame(stri)
         		stri <- subset(stri, stri[,idCol]==n & stri$POSIXct>=stdate & stri$POSIXct<=enddate)
-			ymax <- max(ymax, stri[,modCol], na.rm=TRUE)
+			ymax <- max(ymax, quantile(stri[,modCol], ymaxPerc, na.rm=TRUE), na.rm=TRUE)
                 	}
         	}
   	# Set colors, widths, types

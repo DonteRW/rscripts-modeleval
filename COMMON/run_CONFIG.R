@@ -71,15 +71,29 @@ if (calcStats | createPlots) {
 				load(i)
 				if (exists("obsStrData.map")) obsStrData <- remapData(obsStrData, obsStrData.map)
 				if (exists("obsStrMeta.map")) obsStrMeta <- remapData(obsStrMeta, obsStrMeta.map)
-				if ( !is.null(gageList) ) { 
-					obsStrData_TMP <- subset(obsStrData, obsStrData$site_no %in% unique(gageList$site_no))
-					obsStrMeta_TMP <- subset(obsStrMeta, obsStrMeta$site_no %in% unique(gageList$site_no))
+				if (is.data.table(obsStrData)) {
+					message("Obs are in data.table format")
+					obsStrData_FINAL <- data.table()
+                                        if ( !is.null(gageList) ) {
+                                                obsStrData_TMP <- obsStrData[site_no %in% unique(gageList$site_no),]
+                                                obsStrMeta_TMP <- subset(obsStrMeta, obsStrMeta$site_no %in% unique(gageList$site_no))
+                                        } else {
+                                                obsStrData_TMP <- obsStrData
+                                                obsStrMeta_TMP <- obsStrMeta
+                                        }
+                                        obsStrData_FINAL <- rbindlist(list(obsStrData_FINAL, obsStrData_TMP), fill=TRUE)
+                                        obsStrMeta_FINAL <- plyr::rbind.fill(obsStrMeta_FINAL, obsStrMeta_TMP)
 				} else {
-					obsStrData_TMP <- obsStrData
-					obsStrMeta_TMP <- obsStrMeta
+					if ( !is.null(gageList) ) { 
+						obsStrData_TMP <- subset(obsStrData, obsStrData$site_no %in% unique(gageList$site_no))
+						obsStrMeta_TMP <- subset(obsStrMeta, obsStrMeta$site_no %in% unique(gageList$site_no))
+					} else {
+						obsStrData_TMP <- obsStrData
+						obsStrMeta_TMP <- obsStrMeta
+					}
+					obsStrData_FINAL <- plyr::rbind.fill(obsStrData_FINAL, obsStrData_TMP)
+                        		obsStrMeta_FINAL <- plyr::rbind.fill(obsStrMeta_FINAL, obsStrMeta_TMP)
 				}
-				obsStrData_FINAL <- plyr::rbind.fill(obsStrData_FINAL, obsStrData_TMP)
-                        	obsStrMeta_FINAL <- plyr::rbind.fill(obsStrMeta_FINAL, obsStrMeta_TMP)
 			} else {
 				stop(paste("Streamflow obs file specified but does not exist:", STRfile))
 			}
