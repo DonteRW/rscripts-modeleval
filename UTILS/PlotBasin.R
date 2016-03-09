@@ -141,7 +141,8 @@ PlotFlow <- function(n, modDfs, obs,
                         stdate=NULL,
                         enddate=NULL,
                         modCol="q_cms", obsCol="mean_qcms",
-			idCol="site_no", ymaxPerc=1.0) {
+			idCol="site_no", ymaxPerc=1.0,
+			legAlign="topleft") {
   # Parse type of input for model data (dataframe or list of multiple dataframes)
   if (is.data.frame(modDfs)) {
         str1 <- modDfs
@@ -159,11 +160,11 @@ PlotFlow <- function(n, modDfs, obs,
         str1 <- str1[get(idCol)==n & POSIXct>=stdate & POSIXct<=enddate,]
         obs <- obs[get(idCol)==as.integer(n) & POSIXct>=stdate & POSIXct<=enddate,]
         # Calculate maximum y val for plot limits
-        ymax <- max(quantile(str1[,modCol], ymaxPerc, na.rm=TRUE), quantile(obs[,obsCol], ymaxPerc, na.rm=TRUE), na.rm=TRUE)
+        ymax <- max(quantile(str1[,get(modCol)], ymaxPerc, na.rm=TRUE), quantile(obs[,get(obsCol)], ymaxPerc, na.rm=TRUE), na.rm=TRUE)
         if (!is.data.frame(modDfs) & is.list(modDfs) & length(modDfs)>1) {
                 for (stri in modDfs) {
                         stri <- stri[get(idCol)==n & POSIXct>=stdate & POSIXct<=enddate,]
-                        ymax <- max(ymax, quantile(stri[,modCol], ymaxPerc, na.rm=TRUE), na.rm=TRUE)
+                        ymax <- max(ymax, quantile(stri[,get(modCol)], ymaxPerc, na.rm=TRUE), na.rm=TRUE)
                         }
                 }
         # Set colors, widths, types
@@ -173,19 +174,23 @@ PlotFlow <- function(n, modDfs, obs,
         # Set labels
         if (is.null(labMods)) labMods <- paste0("Model", 1:strcnt)
         # Create plot
-        plot(str1$POSIXct, str1[,modCol], typ='l', ylim=c(0, ymax),
-                xlim=c(stdate, enddate), col=lnCols[1], lty=lnTyps[1], lwd=0,
-                xlab="", ylab="Streamflow (m3/s)", cex.axis=1.2, cex.lab=1.2)
         if (!is.data.frame(modDfs) & is.list(modDfs) & length(modDfs)>1) {
+        	plot(str1$POSIXct, str1[,get(modCol)], typ='l', ylim=c(0, ymax),
+                	xlim=c(stdate, enddate), col=lnCols[1], lty=lnTyps[1], lwd=0,
+                	xlab="", ylab="Streamflow (m3/s)", cex.axis=1.2, cex.lab=1.2)
                 for (j in 1:length(modDfs)) {
                         stri <- modDfs[[j]]
-                        stri <- stri[,get(idCol)==n & POSIXct>=stdate & POSIXct<=enddate,]
-                        lines(stri$POSIXct, stri[,modCol], col=lnCols[j], lty=lnTyps[j], lwd=lnWds[j])
+                        stri <- stri[get(idCol)==n & POSIXct>=stdate & POSIXct<=enddate,]
+                        lines(stri$POSIXct, stri[,get(modCol)], col=lnCols[j], lty=lnTyps[j], lwd=lnWds[j])
                         }
-                }
-        lines(obs$POSIXct, obs[,obsCol], col='black', lwd=1.2, lty=1)
+        } else {
+        	plot(str1$POSIXct, str1[,get(modCol)], typ='l', ylim=c(0, ymax),
+                	xlim=c(stdate, enddate), col=lnCols[1], lty=lnTyps[1], lwd=lnWds[1],
+               		xlab="", ylab="Streamflow (m3/s)", cex.axis=1.2, cex.lab=1.2)
+	}
+        lines(obs$POSIXct, obs[,get(obsCol)], col='black', lwd=2, lty=1)
         title(labTitle, cex.main=1.6)
-        legend("topleft", c(labMods[1:strcnt], labObs),
+        legend(legAlign, c(labMods[1:strcnt], labObs),
                 lty=c(lnTyps[1:strcnt],1), lwd=c(lnWds[1:strcnt],2),
                 col=c(lnCols[1:strcnt], 'black'), cex=1.2,
                 bg="white")
@@ -228,7 +233,7 @@ PlotFlow <- function(n, modDfs, obs,
                 	lines(stri$POSIXct, stri[,modCol], col=lnCols[j], lty=lnTyps[j], lwd=lnWds[j])
                 	}
         	}
-  	lines(obs$POSIXct, obs[,obsCol], col='black', lwd=1.2, lty=1)
+  	lines(obs$POSIXct, obs[,obsCol], col='black', lwd=2, lty=1)
   	title(labTitle, cex.main=1.6)
   	legend("topleft", c(labMods[1:strcnt], labObs),
                 lty=c(lnTyps[1:strcnt],1), lwd=c(lnWds[1:strcnt],2),

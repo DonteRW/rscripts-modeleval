@@ -32,12 +32,21 @@ CalcStrStats <- function(modDf, obsDf, obsMeta, stid2gageList.=gageList,
   if (parallel) {
   	results <- foreach(n=1:length(sites), .combine=rbind, .inorder=FALSE, .errorhandling='remove') %dopar% {
 			gageID <- subset(stid2gageList.[,idCol.obs],stid2gageList.[,idCol.mod]==sites[n])
-  			out <- tryCatch(suppressWarnings( CalcModPerfMulti( modDf[get(idCol.mod)==sites[n],], 
+  			if (is.data.table(obsDf)) {
+                        	out <- tryCatch(suppressWarnings( CalcModPerfMulti( modDf[get(idCol.mod)==sites[n],],
+                                                      obsDf[get(idCol.obs)==gageID,],
+                                                      flxCol.obs="q_cms", flxCol.mod="q_cms",
+                                                      stdate=stdate,
+                                                      enddate=enddate) ),
+                                	error=function(cond) {message(cond); return(NA)})
+			} else {
+				out <- tryCatch(suppressWarnings( CalcModPerfMulti( modDf[get(idCol.mod)==sites[n],], 
                                                       subset(obsDf, obsDf[,idCol.obs]==gageID), 
                                                       flxCol.obs="q_cms", flxCol.mod="q_cms",
                                                       stdate=stdate,
                                                       enddate=enddate) ), 
-                  		error=function(cond) {message(cond); return(NA)})
+                  			error=function(cond) {message(cond); return(NA)})
+			}
 			if ( !is.na(out) ) {
       				out[,idCol.mod] <- sites[n]
       				out[,idCol.obs] <- gageID

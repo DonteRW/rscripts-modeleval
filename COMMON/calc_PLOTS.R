@@ -11,9 +11,11 @@ source("PlotSnotel.R")
 source("PlotMaps.R")
 library(ggplot2)
 
-lineColors <- c(scales::alpha("dodgerblue", 0.8), scales::alpha("darkorange1", 0.7), "olivedrab", "chocolate", "darkmagenta")
+#lineColors <- c(scales::alpha("dodgerblue", 0.8), scales::alpha("darkorange1", 0.7), "olivedrab", "chocolate", "darkmagenta")
+lineColors <- c(scales::alpha("darkorange1", 0.7), scales::alpha("dodgerblue", 0.8), scales::alpha("olivedrab", 0.8), 
+	scales::alpha("darkmagenta", 0.8), scales::alpha("chocolate", 0.8))
 lineTyp <- 1
-lineWd <- c(1,3,1)
+lineWd <- c(3,3,1,1,1)
 
 # Sequential palettes
 seqColPurp5 <- c('#edf8fb', '#b3cde3', '#8c96c6', '#8856a7', '#810f7c')
@@ -567,6 +569,8 @@ if (strBiasMap) {
 	# Setup
 	if (is.null(strBiasTags)) strBiasTags <- unique(stats_str$tag)
 	if (is.null(strBiasSeas)) strBiasSeas <- unique(stats_str$seas)
+	if (plotMapDaily) {colorVar <- "dy_bias"} else {colorVar <- "t_bias"}
+        if (plotMapDaily) {exclVar <- "dy_n"} else {exclVar <- "t_n"}
         if (exists("trustThresh") & !is.null(trustThresh)) {
 		stats_str <- plyr::join(stats_str, trustGages, by="site_no")
 		stats_str <- subset(stats_str, stats_str$fractPerfect > trustThresh | is.na(stats_str$fractPerfect))
@@ -586,16 +590,18 @@ if (strBiasMap) {
                 	gg <- PlotMapErrors(geoMap, tbltmp,
                         	plotTitle="Modeled Streamflow Bias at USGS Gages",
 				plotSubTitle=paste0(i, ", ", statsDateList_STR[[j]]),
-                        	sizeVar="qmean", colorVar="dy_bias",
+                        	sizeVar="qmean", colorVar=colorVar,
                         	sizeLab="Mean\nFlowrate\n(cms)", colorLab="Bias (%)",
 				minThreshSize=0, maxThreshSize=200,
 				minThreshCol=(-100), maxThreshCol=100,
 				minPtsize=1.5, maxPtsize=10,
-				exclVar="dy_n", exclThresh=nThresh*max(tbltmp$dy_n),
+				exclVar=exclVar, exclThresh=nThresh*max(tbltmp[,exclVar]),
 				colBreaks=divColRedYelBlu7, 
                         	valBreaks=c(-Inf, -100, -60, -20, 20, 60, 100, Inf))
                 	ggplot2::ggsave(filename=paste0(writePlotDir, "/str_bias_map_", i, "_", j, ".png"),
                         	plot=gg[[1]], units="in", width=8, height=6, dpi=300)
+                        ggplot2::ggsave(filename=paste0(writePlotDir, "/str_bias_hist_", i, "_", j, ".png"),
+                                plot=gg[[3]], units="in", width=6, height=4, dpi=300)
 			if (writeHtml) {
 				strBias.ggList <- c(strBias.ggList, list(gg[[1]]))
                                 strBias.freqList <- c(strBias.freqList, list(gg[[2]]))
@@ -644,6 +650,8 @@ if (strCorrMap) {
 	# Setup
 	if (is.null(strCorrTags)) strCorrTags <- unique(stats_str$tag)
 	if (is.null(strCorrSeas)) strCorrSeas <- unique(stats_str$seas)
+        if (plotMapDaily) {colorVar <- "dy_cor"} else {colorVar <- "t_cor"}
+        if (plotMapDaily) {exclVar <- "dy_n"} else {exclVar <- "t_n"}
 	if (writeHtml) {
         	cat('## Streamflow Correlation Maps\n', file=paste0(writePlotDir,"/plots_stats.Rmd"), append=TRUE)
         	strCorr.ggList <- list()
@@ -658,18 +666,20 @@ if (strCorrMap) {
                 	gg <- PlotMapErrors(geoMap, tbltmp,
                         	plotTitle="Modeled Streamflow Correlation at USGS Gages",
 				plotSubTitle=paste0(i, ", ", statsDateList_STR[[j]]),
-                        	sizeVar="qmean", colorVar="dy_cor",
+                        	sizeVar="qmean", colorVar=colorVar,
                         	sizeLab="Mean\nFlowrate\n(cms)", colorLab="Daily\nCorrelation",
 				colorLow="orange", colorMid="yellow", colorHigh="cyan4",
 				minThreshSize=0, maxThreshSize=200,
                                 minThreshCol=0, maxThreshCol=1,
 				minPtsize=1.5, maxPtsize=10,
-				exclVar="dy_n", exclThresh=nThresh*max(tbltmp$dy_n),
+				exclVar=exclVar, exclThresh=nThresh*max(tbltmp[,exclVar]),
                                 colBreaks=seqColPurp5,
                                 valBreaks=c(-1, 0.2, 0.4, 0.6, 0.8, 1.0))
                 	ggplot2::ggsave(filename=paste0(writePlotDir, "/str_corr_map_", i, "_", j, ".png"),
                         	plot=gg[[1]], units="in", width=8, height=6, dpi=300)
-                	if (writeHtml) {
+                        ggplot2::ggsave(filename=paste0(writePlotDir, "/str_corr_hist_", i, "_", j, ".png"),
+                                plot=gg[[3]], units="in", width=6, height=4, dpi=300) 
+               		if (writeHtml) {
                         	strCorr.ggList <- c(strCorr.ggList, list(gg[[1]]))
 				strCorr.freqList <- c(strCorr.freqList, list(gg[[2]]))
 				strCorr.histList <- c(strCorr.histList, list(gg[[3]]))
@@ -740,6 +750,8 @@ if (snosweErrMap) {
                                 valBreaks=c(-Inf, -25, -10, 10, 25, 100, Inf))
 			ggplot2::ggsave(filename=paste0(writePlotDir, "/sno_sweerr_map_", i, "_", j, ".png"), 
 				plot=gg[[1]], units="in", width=8, height=6, dpi=300)
+                        ggplot2::ggsave(filename=paste0(writePlotDir, "/sno_sweerr_hist_", i, "_", j, ".png"),
+                                plot=gg[[3]], units="in", width=6, height=4, dpi=300)
                         if (writeHtml) {
                                 snosweErr.ggList <- c(snosweErr.ggList, list(gg[[1]]))
 				snosweErr.freqList <- c(snosweErr.freqList, list(gg[[2]]))
@@ -812,6 +824,8 @@ if (snoprecipErrMap) {
                                 valBreaks=c(-Inf, -25, -10, 10, 25, 100, Inf))
                 	ggplot2::ggsave(filename=paste0(writePlotDir, "/sno_preciperr_map_", i, "_", j, ".png"),
                         	plot=gg[[1]], units="in", width=8, height=6, dpi=300)
+                        ggplot2::ggsave(filename=paste0(writePlotDir, "/sno_preciperr_hist_", i, "_", j, ".png"),
+                                plot=gg[[3]], units="in", width=6, height=4, dpi=300)
                         if (writeHtml) {
                                 snoprecipErr.ggList <- c(snoprecipErr.ggList, list(gg[[1]]))
 				snoprecipErr.freqList <- c(snoprecipErr.freqList, list(gg[[2]]))
@@ -884,6 +898,8 @@ if (amfetErrMap) {
                                 valBreaks=c(-Inf, -25, -10, 10, 25, 100, Inf))
                         ggplot2::ggsave(filename=paste0(writePlotDir, "/amf_eterr_map_", i, "_", j, ".png"),
                                 plot=gg[[1]], units="in", width=8, height=6, dpi=300)
+                        ggplot2::ggsave(filename=paste0(writePlotDir, "/amf_eterr_hist_", i, "_", j, ".png"),
+                                plot=gg[[3]], units="in", width=6, height=4, dpi=300)
                         if (writeHtml) {
                                 amfetErr.ggList <- c(amfetErr.ggList, list(gg[[1]]))
 				amfetErr.freqList <- c(amfetErr.freqList, list(gg[[2]]))
@@ -956,6 +972,8 @@ if (amfetCorrMap) {
                                 valBreaks=c(-1, 0.2, 0.4, 0.6, 0.8, 1.0))
 			ggplot2::ggsave(filename=paste0(writePlotDir, "/amf_etcorr_map_", i, "_", j, ".png"),
                                 plot=gg[[1]], units="in", width=8, height=6, dpi=300)
+                        ggplot2::ggsave(filename=paste0(writePlotDir, "/amf_etcorr_hist_", i, "_", j, ".png"),
+                                plot=gg[[3]], units="in", width=6, height=4, dpi=300)
                         if (writeHtml) {
                                 amfetCorr.ggList <- c(amfetCorr.ggList, list(gg[[1]]))
 				amfetCorr.freqList <- c(amfetCorr.freqList, list(gg[[2]]))

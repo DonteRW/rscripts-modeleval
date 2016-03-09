@@ -26,6 +26,10 @@ reachRting <- TRUE
 ## Temp directory to write intermediate files
 tmpDir <- '/d6/adugger/WRF_Hydro/NFIE/ANALYSIS/'
 
+tmplist <- c("05087500", "10329500", "09107000", "09497980", "08340500", "08068780", "08095300", "06218500", "06352000", "06446500", "06441500", "06696980",
+             "06888000", "06930000", "05411850", "03456500", "03237500", "07331300", "07291000", "07292500", "02372250", "02315000", "02297155", "02314500",
+             "02092500", "02011400", "01532000", "01144000", "04057510", "12013500", "14325000", "13011900", "13339500", "14231000", "11264500", "11138500",
+             "07148400", "02147500", "02322000", "02321500", "02322800")
 
 ################## Observations ###################
 
@@ -39,7 +43,9 @@ SNOfile <- "/glade/p/ral/RHAP/adugger/CONUS_IOC/OBS/SNOTEL/obs_SNOTEL_1998_curre
 METfile <- NULL
 
 ## Path to streamflow data .Rdata file
-STRfile <- "/d6/adugger/WRF_Hydro/NFIE/OBS/obs_USGS_gagesII_2015.Rdata"
+#STRfile <- "/d6/adugger/WRF_Hydro/NFIE/OBS/obs_USGS_gagesII_2015.Rdata"
+STRfile <- "/d6/adugger/WRF_Hydro/NFIE/OBS/obsStrData_gagesII_nfie2015_DV.Rdata"
+#STRfile <- "/d6/adugger/WRF_Hydro/NFIE/OBS/obsStrData_gagesII_nfie2015_IV.Rdata"
 
 
 ################ Model Output Reads ###############
@@ -139,10 +145,10 @@ calcStats <- FALSE
 	## Calculate streamflow performance stats?
 	strProc <- TRUE
 		# Read specified subset? Provide object with link and site_no columns
-                statsLink2gage <- read.table("/d6/adugger/WRF_Hydro/NFIE/OBS/link2gage_gagesII.txt",
+                statsLink2gage <- read.table("/d6/adugger/WRF_Hydro/NFIE/OBS/link2gage_gagesII_CORRECTED.txt",
                                         sep="\t", header=TRUE, colClasses=c("integer","character"))
                 # Calculate daily stats?
-                strProcDaily <- FALSE
+                strProcDaily <- TRUE
 
 	## Calculate SNOTEL performance stats?
 	snoProc <- FALSE
@@ -156,10 +162,10 @@ calcStats <- FALSE
 ## If any are TRUE, specify the following:
 
 	# If the raw data read .Rdata file exists (vs. created above), specify the file
-	modReadFileIn <- '/d6/adugger/WRF_Hydro/NFIE/ANALYSIS/151231_nfie_modout_STR.Rdata'
+	modReadFileIn <- '/d6/adugger/WRF_Hydro/NFIE/ANALYSIS/160126_nfie_modout_STR_w_ioc_mrms.Rdata'
 
         # Specify the stats output .Rdata file to create
-        statsFileOut <- '/d6/adugger/WRF_Hydro/NFIE/ANALYSIS/151231_nfie_stats_STR.Rdata'
+        statsFileOut <- '/d6/adugger/WRF_Hydro/NFIE/ANALYSIS/160126_nfie_stats_STR_w_ioc_mrms_DVs.Rdata'
 
 	# Range dates for main stats
 	stdate_stats <- as.POSIXct("2015-05-23 00:00", format="%Y-%m-%d %H:%M", tz="UTC")
@@ -172,7 +178,7 @@ calcStats <- FALSE
 	# Write stats tables?
 	writeStatsFile <- TRUE
 	# If TRUE, specify output directory
-	writeDir <- '/d6/adugger/WRF_Hydro/NFIE/ANALYSIS/151231_nfie_gagesII_PLOTS'
+	writeDir <- '/d6/adugger/WRF_Hydro/NFIE/ANALYSIS/160126_nfie_gagesII_w_ioc_mrms_DV_PLOTS_ALL'
 
 
 
@@ -181,15 +187,26 @@ calcStats <- FALSE
 ## Create plots and/or maps?
 createPlots <- TRUE
 
+	## Specify .Rdata file containing model time series data for plotting (if needed)
+	plotModFile <- '/d6/adugger/WRF_Hydro/NFIE/ANALYSIS/160126_nfie_modout_STR_w_ioc_mrms.Rdata'
+
+	## Specify .Rdata file containing model statistics for plotting (if needed)
+	plotStatsFile <- '/d6/adugger/WRF_Hydro/NFIE/ANALYSIS/160126_nfie_stats_STR_w_ioc_mrms_DVs.Rdata'
+
+	## Specify .Rdata file containing model forcings for plotting (if needed)
+        plotForcFile <- NULL
+
 	## Create HTML files?
 	writeHtml <- TRUE
 
-	## If TRUE, specify output directory
-	writePlotDir <- '/d6/adugger/WRF_Hydro/NFIE/ANALYSIS/151231_nfie_gagesII_PLOTS'
+	## Specify plot output directory
+	writePlotDir <- '/d6/adugger/WRF_Hydro/NFIE/ANALYSIS/160126_nfie_gagesII_w_ioc_mrms_DV_PLOTS_ALL'
 
 	## Plot specified subset? Provide object with link and site_no columns. HYDRO PLOTS ONLY!
-        plotLink2gage <- read.table("/d6/adugger/WRF_Hydro/NFIE/OBS/link2gage_gagesII.txt",
+        plotLink2gage <- read.table("/d6/adugger/WRF_Hydro/NFIE/OBS/link2gage_gagesII_CORRECTED.txt",
                                         sep="\t", header=TRUE, colClasses=c("integer","character"))
+	#plotLink2gage <- subset(plotLink2gage, plotLink2gage$site_no %in% tmplist)
+	#plotLink2gage <- plotLink2gage[order(plotLink2gage$site_no),]
 
 	######### TIME SERIES PLOTS ###########
 
@@ -206,16 +223,16 @@ createPlots <- TRUE
 		accflowEndDate <- NULL
 
 	## Generate hydrographs?
-	hydroPlot <- FALSE
+	hydroPlot <- TRUE
 
         	# Specify which run tags to plot
-        	hydroTags <- c("SPINUP5YR_No_Routing_v1.1", "SPINUP5YR_Full_Routing_v1.1")
+        	hydroTags <- c('NFIE_No_Routing_MRMS', 'IOCv1.1_Full_Routing_MRMS', 'IOCv1.1_No_Routing_MRMS', 'IOCv1.1_No_Routing_NLDAS')
 
         	# Specify start date
-        	hydroStartDate <- as.POSIXct("2011-01-01", format="%Y-%m-%d", tz="UTC")
+        	hydroStartDate <- as.POSIXct("2015-05-23", format="%Y-%m-%d", tz="UTC")
         
         	# Specify end date
-        	hydroEndDate <- as.POSIXct("2011-12-31", format="%Y-%m-%d", tz="UTC")
+        	hydroEndDate <- as.POSIXct("2015-09-30", format="%Y-%m-%d", tz="UTC")
 
                 # Plot daily values?
                 hydroPlotDaily <- TRUE
@@ -293,6 +310,9 @@ createPlots <- TRUE
                                         sep="\t", header=TRUE, colClasses=c("character", "numeric"))
 	# Threshold for "trusted" gages. Set to 0 to plot all.
 	trustThresh <- 0.75
+
+	# Plot daily stats?
+	plotMapDaily <- TRUE
 
 	## Generate STRFLOW bias maps?
 	strBiasMap <- TRUE
