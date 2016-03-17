@@ -147,50 +147,21 @@ if (calcStats & (strProc | snoProc | amfProc | metProc)) {
 
 # Plots
 if (createPlots) {
+	message("Generating plots")
 	if (accflowPlot | hydroPlot | accprecipPlot | 
-			flowswePlot | flowlsmPlot | swePlot | 
-			strBiasMap | strCorrMap | 
-			snosweErrMap | snoprecipErrMap |
-			amfetErrMap | amfetCorrMap) {
-        	message("Generating plots")
-		if (strBiasMap | strCorrMap | 
-			snosweErrMap | snoprecipErrMap |
-			amfetErrMap | amfetCorrMap) {
-			load(statsFileOut)
-		}
-        	if (is.null(modReadFileOut)) {
-                	if (file.exists(modReadFileIn)) {
-                        	load(modReadFileIn)
-                	}
-        	} else {
-                	if (is.null(modReadFileIn)) {
-                        	if (file.exists(modReadFileOut)) {
-                                	load(modReadFileOut)
-                        	}
-                	} else {
-                        	if (file.exists(modReadFileIn)) {
-                                	load(modReadFileIn)
-                        	}
-                	}
-        	}
+		flowswePlot | flowlsmPlot | swePlot) { 
+		load(plotModFile)
+	}
+	if (strBiasMap | strCorrMap | 
+		snosweErrMap | snoprecipErrMap |
+		amfetErrMap | amfetCorrMap |
+		strBiasEcoBoxplot | strCorrEcoBoxplot |
+		strBiasMin10EcoBoxplot) {
+		load(plotStatsFile)
 	}
 	if (metPlot) {
-                if (is.null(forcReadFileOut)) {
-                        if (file.exists(forcReadFileIn)) {
-                                load(forcReadFileIn)
-                        }
-                } else {
-                        if (is.null(forcReadFileIn)) {
-                                if (file.exists(forcReadFileOut)) {
-                                        load(forcReadFileOut)
-                                }
-                        } else {
-                                if (file.exists(forcReadFileIn)) {
-                                        load(forcReadFileIn)
-                                }
-                        }
-                }
-        }
+		load(plotForcFile)
+	}
         source("calc_PLOTS.R")
 }
 

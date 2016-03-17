@@ -254,9 +254,7 @@ if (readMod & (readBasinLdasout | readAmfLdasout | readSnoLdasout | readMetLdaso
                         ldasoutInd
                 }
 
-        } else { 
- 
- 	if (varsLdasoutSUB) {
+        } else if (varsLdasoutSUB) {
  		# SUBSET
  		varNames <- c('ALBEDO', 'GRDFLX', 'LH', 'HFX', 
  			'FIRA', 'FSA', 'TRAD', 'UGDRNOFF',
@@ -356,6 +354,35 @@ if (readMod & (readBasinLdasout | readAmfLdasout | readSnoLdasout | readMetLdaso
                         ldasoutInd
 		}
 
+        } else if (varsLdasoutWATBAL) {
+                # SUBSET
+                varNames <- c('UGDRNOFF', 'SFCRNOFF', 'CANLIQ', 'CANICE', 
+			'ACCPRCP', 'ACCECAN', 'ACCEDIR', 'ACCETRAN', 
+                        rep('SOIL_M',4),
+                        'SNEQV')
+                varLabels <- c('UGDRNOFF', 'SFCRNOFF', 'CANLIQ', 'CANICE', 
+                        'ACCPRCP', 'ACCECAN', 'ACCEDIR', 'ACCETRAN',
+                        paste0('SOIL_M',1:4),
+                        'SNEQV')
+                ldasoutVars <- as.list( varNames )
+                names(ldasoutVars) <- varLabels
+                #ldasoutVariableList <- list( ldasout = ldasoutVars )
+                # INDEXES
+                genIndex_Ldasout <- function(pref, ldasoutVars.=ldasoutVars) {
+                        level0 <- get(paste0(pref, "Index_Lev0"))
+                        level1 <- get(paste0(pref, "Index_Lev1"))
+                        level2 <- get(paste0(pref, "Index_Lev2"))
+                        level3 <- get(paste0(pref, "Index_Lev3"))
+                        level4 <- get(paste0(pref, "Index_Lev4"))
+                        ldasoutInd <- list( level0, level0, level0, level0,
+                                        level0, level0, level0, level0,
+                                        level1, level2, level3, level4,
+                                        level0 )
+                        names(ldasoutInd) <- names(ldasoutVars.)
+                        #ldasoutIndexList <- list( ldasout = ldasoutInd )
+                        ldasoutInd
+                }
+
  	} else {
  		# ALL
  		varNames <- c('ACCECAN', 'ACCEDIR', 'ACCETRAN', 'ACCPRCP', 'ACSNOM', 'ACSNOW', 'ALBEDO', 'APAR', 'CANICE', 'CANLIQ',
@@ -428,7 +455,6 @@ if (readMod & (readBasinLdasout | readAmfLdasout | readSnoLdasout | readMetLdaso
 		}
 
  	} # end ifelse vars subset
-	} # end ifelse NFIE
 
         # Run through reads
         ldasoutIndexList <- list()
@@ -482,6 +508,7 @@ if (readMod & (readBasinLdasout | readAmfLdasout | readSnoLdasout | readMetLdaso
                                            filesList=ldasoutFilesList,
                                            parallel=parallelFlag )
                 modLdasout_ALL <- ReshapeMultiNcdf(ldasoutDF)
+		modLdasout_ALL[modLdasout_ALL==(-1e+33)] <- NA
 		fileGroups <- unique(ldasoutDF$fileGroup)
 		#if (!(is.list(modLdasout_ALL))) { modLdasout_ALL <- list(fileGroups = modLdasout_ALL) }
 		modLdasoutList <- list()
@@ -497,6 +524,37 @@ if (readMod & (readBasinLdasout | readAmfLdasout | readSnoLdasout | readMetLdaso
 				modLdasout$RadNet <- with(modLdasout, FSA-FIRA) }
 			if ( ("LH" %in% names(modLdasout)) & ("HFX" %in% names(modLdasout)) ) {
 				modLdasout$TurbNet <- with(modLdasout, LH+HFX) }
+			if ( "ACCET" %in% names(modLdasout) ) {
+				mod <- as.data.frame(modLdasout)
+				adjCols <- c("ACCECAN", "ACCEDIR", "ACCETRAN", "ACCET")
+				modnew <- data.frame()
+				for (k in unique(mod$statArg)) {
+        				modsub <- subset(mod, mod$statArg==k)
+        				tmp <- subset(modsub, modsub$DEL_ET<(-1))
+					if (nrow(tmp)>0) {
+        					rstDates <- tmp$POSIXct
+						tstep <- as.integer(difftime(modsub$POSIXct[2], modsub$POSIXct[1], units="secs"))
+        					for (l in 1:(length(rstDates))) {
+                					dt <- rstDates[l]
+                					for (col in adjCols) {
+                        					accval <- subset(modsub[,col], modsub$POSIXct==dt-tstep)
+                        					if (l < length(rstDates)) {
+                                					newvals <- subset(modsub[,col], modsub$POSIXct >= dt & modsub$POSIXct < rstDates[l+1]) + accval
+                                					modsub[,col][modsub$POSIXct >= dt & modsub$POSIXct < rstDates[l+1]] <- newvals
+                        					} else {
+                                					newvals <- subset(modsub[,col], modsub$POSIXct >= dt) + accval
+                                					modsub[,col][modsub$POSIXct >= dt] <- newvals
+                        					}
+                					}
+						}
+        				}
+        				modnew <- rbind(modnew, modsub)
+				}
+				modnew <- CalcNoahmpFluxes(modnew, "statArg")
+				modLdasout <- modnew
+				modLdasout$ACCET <- with(modLdasout, ACCEDIR + ACCECAN + ACCETRAN)
+				modLdasout$DEL_ET <- with(modLdasout, DEL_ACCEDIR + DEL_ACCECAN + DEL_ACCETRAN)
+			}
 			# Data mgmt
                         modLdasout$tag <- modoutTag
 			modLdasout$fileGroup <- j
@@ -518,6 +576,9 @@ if (readMod & (readBasinLdasout | readAmfLdasout | readSnoLdasout | readMetLdaso
 			if (varsLdasoutIOC0) {
                         	modLdasout.snoday <- modLdasout[, list(SNEQV_last=tail(SNEQV,1), SNOWH_last=tail(SNOWH,1)), 
 							by = "statArg,PST_dateP1"]
+			} else if (varsLdasoutWATBAL) {
+				modLdasout.snoday <- modLdasout[, list(SNEQV_last=tail(SNEQV,1)),
+                                                        by = "statArg,PST_dateP1"]
 			} else {
 				modLdasout.snoday <- modLdasout[, list(DEL_ACCPRCP=sum(DEL_ACCPRCP), SNEQV_last=tail(SNEQV,1), SNOWH_last=tail(SNOWH,1)), 
 								by = "statArg,PST_dateP1"]
@@ -591,6 +652,20 @@ if (readMod & (readBasinLdasout | readAmfLdasout | readSnoLdasout | readMetLdaso
                                          FIRA_mean=mean(FIRA_mean), FSA_mean=mean(FSA_mean),
 					 RadNet_mean=mean(RadNet_mean), TurbNet_mean=mean(TurbNet_mean)),
                                          by = "statArg,UTC_month"]
+                        } else if (varsLdasoutWATBAL) {
+                                modLdasout.utcday <- modLdasout[, list(DEL_ACCPRCP=sum(DEL_ACCPRCP), DEL_ACCEDIR=sum(DEL_ACCEDIR),
+                                         DEL_ACCECAN=sum(DEL_ACCECAN), DEL_ACCETRAN=sum(DEL_ACCETRAN),
+                                         SNEQV_mean=mean(SNEQV), 
+                                         SOIL_M1_mean=mean(SOIL_M1), SOIL_M2_mean=mean(SOIL_M2)),
+                                         by = "statArg,UTC_date"]
+                                mo <- as.integer(format(modLdasout.utcday$UTC_date, "%m"))
+                                yr <- as.integer(format(modLdasout.utcday$UTC_date, "%Y"))
+                                modLdasout.utcday$UTC_month <- as.Date(paste0(yr,"-",mo,"-15"), format="%Y-%m-%d")
+                                modLdasout.utcmonth <- modLdasout.utcday[, list(DEL_ACCPRCP=sum(DEL_ACCPRCP), DEL_ACCEDIR=sum(DEL_ACCEDIR),
+                                         DEL_ACCECAN=sum(DEL_ACCECAN), DEL_ACCETRAN=sum(DEL_ACCETRAN),
+                                         SNEQV_mean=mean(SNEQV_mean), 
+                                         SOIL_M1_mean=mean(SOIL_M1_mean), SOIL_M2_mean=mean(SOIL_M2_mean)),
+                                         by = "statArg,UTC_month"]
 			}
                         # Add dummy POSIXct for ease of plotting
                         modLdasout.utcday$POSIXct <- as.POSIXct(paste0(modLdasout.utcday$UTC_date, " 00:00"), tz="UTC")
@@ -649,6 +724,18 @@ if (readMod & readGwout) {
 		}
 		if (is.null(readModStart) & !is.null(readModEnd)) {
 			modGwout <- subset(modGwout, modGwout$POSIXct <= readModEnd)
+		}
+		if (exists("gage2basinList")) {
+			tmpall <- data.frame()
+			for (j in names(gage2basinList)) {
+				tmp <- subset(modGwout, modGwout$basin %in% gage2basinList[[j]])
+				tmp <- aggregate(tmp$q_cms, by=list(tmp$POSIXct), sum)
+				names(tmp) <- c("POSIXct", "q_cms")
+				tmp$site_no <- j
+				tmpall <- rbind(tmpall, tmp)
+			}
+			modGwout <- tmpall
+			rm(tmpall)
 		}
 		# Tag and bind
 		modGwout$tag <- modoutTag

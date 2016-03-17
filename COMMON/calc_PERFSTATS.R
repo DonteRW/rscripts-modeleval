@@ -32,12 +32,21 @@ CalcStrStats <- function(modDf, obsDf, obsMeta, stid2gageList.=gageList,
   if (parallel) {
   	results <- foreach(n=1:length(sites), .combine=rbind, .inorder=FALSE, .errorhandling='remove') %dopar% {
 			gageID <- subset(stid2gageList.[,idCol.obs],stid2gageList.[,idCol.mod]==sites[n])
-  			out <- tryCatch(suppressWarnings( CalcModPerfMulti( modDf[get(idCol.mod)==sites[n],], 
+  			if (is.data.table(obsDf)) {
+                        	out <- tryCatch(suppressWarnings( CalcModPerfMulti( modDf[get(idCol.mod)==sites[n],],
+                                                      obsDf[get(idCol.obs)==gageID,],
+                                                      flxCol.obs="q_cms", flxCol.mod="q_cms",
+                                                      stdate=stdate,
+                                                      enddate=enddate) ),
+                                	error=function(cond) {message(cond); return(NA)})
+			} else {
+				out <- tryCatch(suppressWarnings( CalcModPerfMulti( modDf[get(idCol.mod)==sites[n],], 
                                                       subset(obsDf, obsDf[,idCol.obs]==gageID), 
                                                       flxCol.obs="q_cms", flxCol.mod="q_cms",
                                                       stdate=stdate,
                                                       enddate=enddate) ), 
-                  		error=function(cond) {message(cond); return(NA)})
+                  			error=function(cond) {message(cond); return(NA)})
+			}
 			if ( !is.na(out) ) {
       				out[,idCol.mod] <- sites[n]
       				out[,idCol.obs] <- gageID
@@ -343,12 +352,12 @@ if (snoProc) {
                         modLdasout_tmp.snod <- subset(modLdasout_tmp.snod_ALL, modLdasout_tmp.snod_ALL$tag==runTag)
                 	# SNOTEL (daily)
                 	# Full time period
-                	results <- CalcVarStats(modLdasout_tmp.snod, obsSnoMeta, obsSnoData, stdate=stdate_stats, enddate=enddate_stats,
-                        	        flxCol.obs="Prec_mm", flxCol.mod="DEL_ACCPRCP", overwriteDate=overwriteDate_flag, parallel=parallelFlag)
-                	results$tag <- runTag
-                	results$var <- "Precip"
-                	results$seas <- "Full"
-                	stats_ldasout_sno <- plyr::rbind.fill(stats_ldasout_sno, results)
+                	#results <- CalcVarStats(modLdasout_tmp.snod, obsSnoMeta, obsSnoData, stdate=stdate_stats, enddate=enddate_stats,
+                        #	        flxCol.obs="Prec_mm", flxCol.mod="DEL_ACCPRCP", overwriteDate=overwriteDate_flag, parallel=parallelFlag)
+                	#results$tag <- runTag
+                	#results$var <- "Precip"
+                	#results$seas <- "Full"
+                	#stats_ldasout_sno <- plyr::rbind.fill(stats_ldasout_sno, results)
 
                 	results <- CalcVarStats(modLdasout_tmp.snod, obsSnoMeta, obsSnoData, stdate=stdate_stats, enddate=enddate_stats,
                         	        flxCol.obs="SWE_mm", flxCol.mod="SNEQV_last", overwriteDate=overwriteDate_flag, parallel=parallelFlag)
@@ -358,12 +367,12 @@ if (snoProc) {
                 	stats_ldasout_sno <- plyr::rbind.fill(stats_ldasout_sno, results)
 
 	                # Subset time period
-        	        results <- CalcVarStats(modLdasout_tmp.snod, obsSnoMeta, obsSnoData, stdate=stdate_stats_sub, enddate=enddate_stats_sub,
-                	                flxCol.obs="Prec_mm", flxCol.mod="DEL_ACCPRCP", overwriteDate=overwriteDate_flag, parallel=parallelFlag)
-                	results$tag <- runTag
-                	results$var <- "Precip"
-                	results$seas <- "Sub"
-                	stats_ldasout_sno <- plyr::rbind.fill(stats_ldasout_sno, results)
+        	        #results <- CalcVarStats(modLdasout_tmp.snod, obsSnoMeta, obsSnoData, stdate=stdate_stats_sub, enddate=enddate_stats_sub,
+                	#                flxCol.obs="Prec_mm", flxCol.mod="DEL_ACCPRCP", overwriteDate=overwriteDate_flag, parallel=parallelFlag)
+                	#results$tag <- runTag
+                	#results$var <- "Precip"
+                	#results$seas <- "Sub"
+                	#stats_ldasout_sno <- plyr::rbind.fill(stats_ldasout_sno, results)
 
                 	results <- CalcVarStats(modLdasout_tmp.snod, obsSnoMeta, obsSnoData, stdate=stdate_stats_sub, enddate=enddate_stats_sub,
                        		        flxCol.obs="SWE_mm", flxCol.mod="SNEQV_last", overwriteDate=overwriteDate_flag, parallel=parallelFlag)
@@ -723,6 +732,8 @@ if (amfProc) {
                 modLdasout_tmp.amf_ALL <- modLdasout_AMF[["native"]]
 		obsAmfData.match <- obsAmfData
 		overwriteDate_flag <- FALSE
+        	stats_dates <- list()
+        	stats_etmean <- list()
                 # Loop through runs
                 for (j in 1:length(runTagList)) {
                         runTag <- runTagList[j]
@@ -773,6 +784,28 @@ if (amfProc) {
                         results$seas <- "Full"
                         stats_ldasout_amf <- plyr::rbind.fill(stats_ldasout_amf, results)
 
+                        stats_dates_tag <- list(Full=list(start=ifelse(is.null(stdate_stats), min(modLdasout_tmp.amf$POSIXct), stdate_stats),
+                                                end=ifelse(is.null(enddate_stats), max(modLdasout_tmp.amf$POSIXct), enddate_stats)),
+                                        Sub=list(start=ifelse(is.null(stdate_stats_sub), min(modLdasout_tmp.amf$POSIXct), stdate_stats_sub),
+                                                end=ifelse(is.null(enddate_stats_sub), max(modLdasout_tmp.amf$POSIXct), enddate_stats_sub)))
+			modLdasout_tmp.amf <- data.table(subset(modLdasout_tmp.amf, modLdasout_tmp.amf$POSIXct >= stats_dates_tag$Full$start & 
+							modLdasout_tmp.amf$POSIXct <= stats_dates_tag$Full$end))
+			obsAmfData_tmp <- data.table(subset(obsAmfData.d, obsAmfData.d$POSIXct >= stats_dates_tag$Full$start & obsAmfData.d$POSIXct <= stats_dates_tag$Full$end))
+                        # ETmeans
+                        # Full
+                        stats_etmean_tag <- as.data.frame(modLdasout_tmp.amf[, j=list(etmean=mean(DEL_ET, na.rm=TRUE)), by=list(statArg)])
+                        stats_etmean_tag$typ <- "Model"
+                        stats_etmean_tag$tag <- runTag
+                        stats_etmean_tag$seas <- "Full"
+                        stats_obsetmean_tag <- as.data.frame(obsAmfData_tmp[, j=list(etmean=mean(H2O_mm, na.rm=TRUE)), by=list(site_id)])
+                        stats_obsetmean_tag$typ <- "Obs"
+                        stats_obsetmean_tag$tag <- runTag
+                        stats_obsetmean_tag$seas <- "Full"
+                        stats_etmean_tag <- plyr::rbind.fill(stats_etmean_tag, stats_obsetmean_tag)
+
+			# SUB TIME
+			if (!is.null(stdate_stats_sub) & !is.null(enddate_stats_sub)) {
+
 			message("AMF: subset")
                         # Subset time period
 			message("     SWnet")
@@ -818,12 +851,46 @@ if (amfProc) {
                         results$seas <- "Sub"
                         stats_ldasout_amf <- plyr::rbind.fill(stats_ldasout_amf, results)
 
+                	modLdasout_tmp.amf_sub <- data.table(subset(modLdasout_tmp.amf, modLdasout_tmp.amf$POSIXct >= stats_dates_tag$Sub$start & 
+					modLdasout_tmp.amf$POSIXct <= stats_dates_tag$Sub$end))
+                	obsAmfData_tmp_sub <- data.table(subset(obsAmfData.d, obsAmfData.d$POSIXct >= stats_dates_tag$Sub$start & 
+					obsAmfData.d$POSIXct <= stats_dates_tag$Sub$end))
+                	# ETmeans
+                	# Sub
+                	stats_etmean_tag_sub <- as.data.frame(modLdasout_tmp.amf_sub[, j=list(etmean=mean(DEL_ET, na.rm=TRUE)), by=list(site_no)])
+                	stats_etmean_tag_sub$typ <- "Model"
+                	stats_etmean_tag_sub$tag <- runTag
+                	stats_etmean_tag_sub$seas <- "Sub"
+                	stats_obsetmean_tag_sub <- as.data.frame(obsAmfData_tmp_sub[, j=list(etmean=mean(DEL_ET, na.rm=TRUE)), by=list(site_no)])
+                	stats_obsetmean_tag_sub$typ <- "Obs"
+                	stats_obsetmean_tag_sub$tag <- runTag
+                	stats_obsetmean_tag_sub$seas <- "Sub"
+                	stats_etmean_tag_sub <- plyr::rbind.fill(stats_etmean_tag_sub, stats_obsetmean_tag_sub)
+			
+			}
+
+                	# Combine
+			if (!is.null(stdate_stats_sub) & !is.null(enddate_stats_sub)) {
+                		stats_etmean <- as.data.frame(rbindlist(list(stats_etmean, stats_etmean_tag, stats_etmean_tag_sub), fill=TRUE))
+			} else {
+				stats_etmean <- as.data.frame(rbindlist(list(stats_etmean, stats_etmean_tag), fill=TRUE))
+			}
+                	# Dates
+                	stats_dates_tag <- list(stats_dates_tag)
+                	names(stats_dates_tag) <- runTag
+                	stats_dates <- c(stats_dates, stats_dates_tag)
+
                 } # end loop
+	        stnIDs <- unique(obsAmfMeta[c("site_no", "lat", "lon")])
+        	stats_etmean <- plyr::join(stats_etmean, stnIDs, by="site_no")
+
                 # Mean across all sites
+		print("Calculating means")
                 stats_ldasout_amf_MEAN <- aggregate(stats_ldasout_amf[,1:57], by=list(stats_ldasout_amf$tag, stats_ldasout_amf$var, stats_ldasout_amf$seas), mean)
 		names(stats_ldasout_amf_MEAN)[1:3] <- c("tag", "var", "seas")
                 # Output
                 if (writeStatsFile) {
+			print("Output text file")
                         # Change NAs to large negative for QGIS so data type is not affected
                         stats_ldasout_amf_tmp <- stats_ldasout_amf
                         stats_ldasout_amf_tmp[is.na(stats_ldasout_amf_tmp)]<-(-1e+30)
@@ -831,15 +898,19 @@ if (amfProc) {
                         stats_ldasout_amf_MEAN_tmp <- stats_ldasout_amf_MEAN
                         stats_ldasout_amf_MEAN_tmp[is.na(stats_ldasout_amf_MEAN_tmp)]<-(-1e+30)
                         write.table(stats_ldasout_amf_MEAN_tmp, file=paste0(writeDir, "/stats_ldasout_amf_MEAN.txt"), sep="\t", row.names=FALSE)
+                	stats_etmean_tmp <- stats_etmean
+                	stats_etmean_tmp[is.na(stats_etmean_tmp)]<-(-1e+30)
+                	write.table(stats_etmean_tmp, file=paste0(writeDir, "/stats_etmean.txt"), sep="\t", row.names=FALSE)
                 }
-                saveList <- c(saveList, "stats_ldasout_amf", "stats_ldasout_amf_MEAN")
-        } # end if modLdasin
+                saveList <- c(saveList, "stats_ldasout_amf", "stats_ldasout_amf_MEAN", "stats_dates", "stats_etmeans")
+        } # end if modLdasout
 
 } # end if amfProc
 
 
 ## ------------------------------------------------------------------------
-# Cleanup`
+# Cleanup
+print("Saving")
 save(list=saveList, file=statsFileOut)
 
 stopCluster(cl)
